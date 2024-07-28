@@ -104,7 +104,7 @@ allocpid() {
 static struct proc*
 allocproc(void)
 {
-  struct proc *p;
+  struct proc *p; 
 
   for(p = proc; p < &proc[NPROC]; p++) {
     acquire(&p->lock);
@@ -114,11 +114,14 @@ allocproc(void)
       release(&p->lock);
     }
   }
+  
+  
   return 0;
 
 found:
   p->pid = allocpid();
   p->state = USED;
+  
 
   // Allocate a trapframe page.
   if((p->trapframe = (struct trapframe *)kalloc()) == 0){
@@ -126,11 +129,17 @@ found:
     release(&p->lock);
     return 0;
   }
-
+  
   // An empty user page table.
   p->pagetable = proc_pagetable(p);
   if(p->pagetable == 0){
     freeproc(p);
+    release(&p->lock);
+    return 0;
+  }
+  
+  // 为stored_trapframe初始化
+  if((p->stored_trapframe = (struct trapframe *)kalloc()) == 0){
     release(&p->lock);
     return 0;
   }
@@ -140,6 +149,9 @@ found:
   memset(&p->context, 0, sizeof(p->context));
   p->context.ra = (uint64)forkret;
   p->context.sp = p->kstack + PGSIZE;
+  
+  p->in_handler=0;  //初始化为0，不在handler中
+  p->alarm_ticks=0; //初始化为0，不进行周期性alarm调用
 
   return p;
 }
@@ -155,6 +167,9 @@ freeproc(struct proc *p)
   p->trapframe = 0;
   if(p->pagetable)
     proc_freepagetable(p->pagetable, p->sz);
+  // 释放内存
+  if(p->stored_trapframe)
+    kfree((void*)p->stored_trapframe);
   p->pagetable = 0;
   p->sz = 0;
   p->pid = 0;

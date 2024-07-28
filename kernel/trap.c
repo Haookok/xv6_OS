@@ -76,10 +76,22 @@ usertrap(void)
   if(p->killed)
     exit(-1);
 
-  // give up the CPU if this is a timer interrupt.
-  if(which_dev == 2)
+ // give up the CPU if this is a timer interrupt.
+  if(which_dev == 2){
+    //如果到达周期点，保存现场，再将epc置为handler存储的地址，即修改跳回后执行的地址为handler的地址
+    if (p->alarm_ticks > 0&&p->in_handler==0)
+    {
+      p->cur_ticks++;
+      if (p->cur_ticks > p->alarm_ticks)
+      {
+        p->in_handler = 1;
+        p->cur_ticks = 0;
+        *p->stored_trapframe=*p->trapframe;
+        p->trapframe->epc = p->alarm_handler;
+      }
+    }
     yield();
-
+  }	
   usertrapret();
 }
 

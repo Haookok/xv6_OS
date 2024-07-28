@@ -92,6 +92,8 @@ struct proc {
   int killed;                  // If non-zero, have been killed
   int xstate;                  // Exit status to be returned to parent's wait
   int pid;                     // Process ID
+  
+
 
   // wait_lock must be held when using this:
   struct proc *parent;         // Parent process
@@ -105,4 +107,10 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
+  
+  int alarm_ticks;             // 告警间隔
+  int cur_ticks;               // 当前计数
+  uint64 alarm_handler;        // 告警回调
+  struct trapframe *stored_trapframe;//存储调用handler时的现场
+  int in_handler;              // 是否在handler中
 };
